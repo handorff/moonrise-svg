@@ -104,11 +104,11 @@ function renderSvg(params: Params): string {
   border.strokeWidth = 2;
   border.strokeColor = new paper.Color("blue");
 
-  // ----- base curve function (matches the "1 - sqrt(t)" easing feel) -----
-  // Feel free to swap this when you paste your real notebook's f(x).
+
   const f = (x: number) => {
-    const t = clamp01(x / WIDTH);
-    return (1 - Math.sqrt(t)) * HEIGHT;
+    const t = x / WIDTH;
+    const e = Math.sqrt(t);
+    return HEIGHT - CIRCLE_RADIUS + (2 * CIRCLE_RADIUS - HEIGHT) * e;
   };
 
   // ----- random curves -----
@@ -139,7 +139,6 @@ function renderSvg(params: Params): string {
   for (const c of circles) {
     for (const p of paths) {
       // Boolean intersect result is added to the scene; keep it, remove originals later
-      // trace:false matches your notebook
       p.intersect(c, { trace: false });
     }
   }
@@ -246,8 +245,8 @@ function circleCenters(
   const yTop = CIRCLE_RADIUS;
 
   return xs.map((x) => {
-    const t = clamp01(x / WIDTH);
-    const e = 1 - Math.sqrt(t); // 1..0 easing
+    const t = x / WIDTH;
+    const e = 1 - Math.sqrt(t);
     const y = yTop + e * (yBottom - yTop);
     return { x, y };
   });
@@ -261,29 +260,34 @@ function getRandomPoints(numPoints: number, seed: string, WIDTH: number, HEIGHT:
   }));
 }
 
-// Deterministic RNG from string seed
-function seededRandom(seed: string): () => number {
-  // hash string -> uint32
-  let h = 2166136261;
-  for (let i = 0; i < seed.length; i++) {
-    h ^= seed.charCodeAt(i);
-    h = Math.imul(h, 16777619);
+function seededRandom(seed: string) {
+  const seedStr = String(seed);
+  const seedFn = xmur3(seedStr);
+  return mulberry32(seedFn());
+}
+
+function xmur3(str: string) {
+  let h = 1779033703 ^ str.length;
+  for (let i = 0; i < str.length; i++) {
+    h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
   }
-  // mulberry32
-  let a = h >>> 0;
   return function () {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    h = Math.imul(h ^ (h >>> 16), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    h ^= h >>> 16;
+    return h >>> 0;
   };
 }
 
-function clamp01(x: number) {
-  return Math.min(1, Math.max(0, x));
+function mulberry32(a: number) {
+  return function () {
+    let t = (a += 0x6d2b79f5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
-
 
 
 // ---------- UI ----------
