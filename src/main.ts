@@ -371,6 +371,12 @@ app.innerHTML = `
         <button id="download">Download SVG</button>
       </div>
 
+      <div style="display:flex; gap:10px; margin-top: 10px;">
+        <button id="exportParams">Export Params</button>
+        <button id="importParams">Import Params</button>
+        <input id="paramsFile" type="file" accept="application/json" style="display:none;" />
+      </div>
+
       <p id="status" style="min-height: 1.2em; color:#555;"></p>
     </div>
 
@@ -397,6 +403,9 @@ const els = {
   status: document.querySelector<HTMLParagraphElement>("#status")!,
   render: document.querySelector<HTMLButtonElement>("#render")!,
   download: document.querySelector<HTMLButtonElement>("#download")!,
+  exportParams: document.querySelector<HTMLButtonElement>("#exportParams")!,
+  importParams: document.querySelector<HTMLButtonElement>("#importParams")!,
+  paramsFile: document.querySelector<HTMLInputElement>("#paramsFile")!,
   randomSeed: document.querySelector<HTMLButtonElement>("#randomSeed")!,
   modeRadios: Array.from(
     document.querySelectorAll<HTMLInputElement>('input[name="mode"]')
@@ -420,6 +429,23 @@ function readParamsFromUI(): Params {
     mode,
     exportPanel: Number(els.exportPanel.value),
   });
+}
+
+function applyParamsToUI(params: Params) {
+  els.seed.value = params.seed;
+  els.points.value = String(params.points);
+  els.panels.value = String(params.panels);
+  els.circleRadius.value = String(params.circleRadius);
+  els.panelWidth.value = String(params.panelWidth);
+  els.totalHeight.value = String(params.totalHeight);
+  els.totalWidth.value = String(params.totalWidth);
+  els.exportPanel.value = String(params.exportPanel);
+
+  for (const radio of els.modeRadios) {
+    radio.checked = radio.value === params.mode;
+  }
+
+  syncExportControls(params);
 }
 
 function syncExportControls(params: Params) {
@@ -480,8 +506,46 @@ function downloadSvg() {
   URL.revokeObjectURL(url);
 }
 
+function downloadParams() {
+  const params = readParamsFromUI();
+  const payload = JSON.stringify(params, null, 2);
+  const blob = new Blob([payload], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "moonrise-params.json";
+  a.click();
+
+  URL.revokeObjectURL(url);
+}
+
+async function importParamsFromFile(file: File) {
+  const text = await file.text();
+  const parsed = JSON.parse(text) as Partial<Params>;
+  const nextParams = coerceParams(parsed);
+  applyParamsToUI(nextParams);
+  lastParams = nextParams;
+  void doRender();
+}
+
 els.render.addEventListener("click", () => void doRender());
 els.download.addEventListener("click", () => downloadSvg());
+els.exportParams.addEventListener("click", () => downloadParams());
+els.importParams.addEventListener("click", () => els.paramsFile.click());
+els.paramsFile.addEventListener("change", async () => {
+  const file = els.paramsFile.files?.[0];
+  if (!file) return;
+  try {
+    await importParamsFromFile(file);
+    els.status.textContent = "Params imported.";
+  } catch (error) {
+    console.error(error);
+    els.status.textContent = "Unable to import params JSON.";
+  } finally {
+    els.paramsFile.value = "";
+  }
+});
 els.randomSeed.addEventListener("click", () => {
   els.seed.value = generateSeed();
   els.seed.focus();
