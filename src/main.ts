@@ -89,8 +89,26 @@ function renderSvg(params: Params): string {
   const CIRCLE_RADIUS = params.circleRadius;
   const RECT_WIDTH = params.panelWidth;
 
+  const f = (x: number) => {
+    const t = x / WIDTH;
+    const e = Math.sqrt(t);
+    return HEIGHT - CIRCLE_RADIUS + (2 * CIRCLE_RADIUS - HEIGHT) * e;
+  };
+
   // To keep panel rectangles inside the border, place centers from [RECT_WIDTH/2 .. WIDTH-RECT_WIDTH/2]
   const MARGIN = RECT_WIDTH / 2;
+
+  if (params.mode === "export") {
+    return renderExportSvg({
+      WIDTH,
+      HEIGHT,
+      NUM_CIRCLES,
+      CIRCLE_RADIUS,
+      MARGIN,
+      f,
+      params,
+    });
+  }
 
   const canvas = document.createElement("canvas");
   paper.setup(canvas);
@@ -103,13 +121,6 @@ function renderSvg(params: Params): string {
   );
   border.strokeWidth = 2;
   border.strokeColor = new paper.Color("blue");
-
-
-  const f = (x: number) => {
-    const t = x / WIDTH;
-    const e = Math.sqrt(t);
-    return HEIGHT - CIRCLE_RADIUS + (2 * CIRCLE_RADIUS - HEIGHT) * e;
-  };
 
   // ----- random curves -----
   const randomPoints = getRandomPoints(params.points, params.seed, WIDTH, HEIGHT);
@@ -125,7 +136,7 @@ function renderSvg(params: Params): string {
     return c;
   });
 
-  const rects = centers.map(({ x }) => {
+  centers.map(({ x }) => {
     const r = new paper.Path.Rectangle(
       new paper.Point(x - RECT_WIDTH / 2, 0),
       new paper.Point(x + RECT_WIDTH / 2, HEIGHT)
@@ -147,58 +158,60 @@ function renderSvg(params: Params): string {
   paths.forEach((p) => p.remove());
   circles.forEach((c) => c.remove());
 
-  // ----- export behavior -----
-  if (params.mode === "preview") {
-    const svg = paper.project.exportSVG({ asString: true });
-    paper.project.clear();
-    return String(svg);
-  }
-
-  // Export mode: crop to a single panel and output panelWidth × totalHeight
-  const panelIndex = Math.max(1, Math.min(params.exportPanel, params.panels)) - 1;
-  const panelCenterX = centers[panelIndex]?.x ?? centers[0].x;
-
-  const left = panelCenterX - RECT_WIDTH / 2;
-  const top = 0;
-
-  const svg = exportCroppedSvg({
-    cropX: left,
-    cropY: top,
-    cropWidth: RECT_WIDTH,
-    cropHeight: HEIGHT,
-  });
-
+  const svg = paper.project.exportSVG({ asString: true });
   paper.project.clear();
-  return svg;
+  return String(svg);
+}
 
-  // --- helper for cropping + translating ---
-  function exportCroppedSvg(opts: { cropX: number; cropY: number; cropWidth: number; cropHeight: number }): string {
-    const { cropX, cropY, cropWidth, cropHeight } = opts;
+function renderExportSvg({
+  WIDTH,
+  HEIGHT,
+  NUM_CIRCLES,
+  CIRCLE_RADIUS,
+  MARGIN,
+  f,
+  params,
+}: {
+  WIDTH: number;
+  HEIGHT: number;
+  NUM_CIRCLES: number;
+  CIRCLE_RADIUS: number;
+  MARGIN: number;
+  f: (x: number) => number;
+  params: Params;
+}): string {
+  const canvas = document.createElement("canvas");
+  paper.setup(canvas);
 
-    // Group everything currently in the project
-    const items = paper.project.activeLayer.children.slice();
-    const g = new paper.Group(items);
+  const squareSize = CIRCLE_RADIUS * 2;
+  paper.view.viewSize = new paper.Size(squareSize, squareSize);
 
-    // Clip rectangle in world coords
-    const clipRect = new paper.Path.Rectangle(
-      new paper.Point(cropX, cropY),
-      new paper.Size(cropWidth, cropHeight)
-    );
-    clipRect.clipMask = true;
+  const randomPoints = getRandomPoints(params.points, params.seed, WIDTH, HEIGHT);
+  const paths = randomPoints.map((pt) => makeTranslatedTruncatedCurve(pt, f, WIDTH, { steps: 120 }));
 
-    // Clip group: [clipRect + content]
-    const clipped = new paper.Group([clipRect, g]);
-    clipped.clipped = true;
+  const centers = circleCenters(NUM_CIRCLES, WIDTH, HEIGHT, MARGIN, CIRCLE_RADIUS);
+  const panelIndex = Math.max(1, Math.min(params.exportPanel, params.panels)) - 1;
+  const panelCenter = centers[panelIndex] ?? centers[0];
 
-    // Translate so crop area starts at (0,0)
-    clipped.translate(new paper.Point(-cropX, -cropY));
+  const circle = new paper.Path.Circle(new paper.Point(panelCenter.x, panelCenter.y), CIRCLE_RADIUS);
+  const circlePaths = paths.map((p) => p.intersect(circle, { trace: false }));
+  circlePaths.forEach((p) =>
+    p.translate(new paper.Point(-panelCenter.x + CIRCLE_RADIUS, -panelCenter.y + CIRCLE_RADIUS))
+  );
 
-    // Set view size to the exported panel size
-    paper.view.viewSize = new paper.Size(cropWidth, cropHeight);
+  const boundingSquare = new paper.Path.Rectangle(
+    new paper.Point(0, 0),
+    new paper.Size(squareSize, squareSize)
+  );
+  boundingSquare.strokeWidth = 2;
+  boundingSquare.strokeColor = new paper.Color("blue");
 
-    const out = paper.project.exportSVG({ asString: true });
-    return String(out);
-  }
+  paths.forEach((p) => p.remove());
+  circle.remove();
+
+  const svg = paper.project.exportSVG({ asString: true });
+  paper.project.clear();
+  return String(svg);
 }
 
 function makeTranslatedTruncatedCurve(
