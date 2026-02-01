@@ -12,31 +12,26 @@ npm run preview  # Preview production build locally
 
 ## Architecture
 
-Moonrise SVG is a procedural SVG artwork generator using Paper.js for vector graphics and boolean operations. The entire application lives in a single file (`src/main.ts`, ~580 lines).
+Moonrise SVG is a procedural SVG artwork generator using Paper.js for vector graphics and boolean operations.
 
 ### Tech Stack
 - TypeScript + Vite
 - Paper.js for vector graphics and path intersections
 - Deployed to GitHub Pages via GitHub Actions
 
-### Code Structure (src/main.ts)
+### Code Structure
 
-The file is organized into distinct sections:
+The codebase is organized into focused modules under `src/`:
 
-1. **Types & Defaults (lines 3-31)**: `Params` type defines all configurable parameters; `DEFAULTS` provides initial values
-
-2. **Parameter Validation (lines 33-81)**: `coerceParams()` validates and normalizes user input with clamping
-
-3. **Rendering (lines 83-215)**:
-   - `renderSvg()`: Main renderer for preview mode (shows all panels with debug borders)
-   - `renderExportSvg()`: Single-panel export renderer (square SVG of selected circle)
-
-4. **Geometry Functions (lines 217-303)**:
-   - `makeTranslatedTruncatedCurve()`: Creates curved paths following a mathematical function
-   - `circleCenters()`: Calculates panel positions along an arc
-   - Seeded random: `xmur3()` + `mulberry32()` for reproducible randomness
-
-5. **UI (lines 306-578)**: Inline HTML template with event handlers
+| File | Purpose |
+|------|---------|
+| `main.ts` | Entry point; calls `initUI()` |
+| `types.ts` | `Params` type definition and `DEFAULTS` constant |
+| `params.ts` | `coerceParams()` for validating/normalizing user input |
+| `random.ts` | Seeded PRNG (`xmur3` + `mulberry32`) and `getRandomPoints()` |
+| `geometry.ts` | `makeTranslatedTruncatedCurve()` and `circleCenters()` |
+| `render.ts` | `renderSvg()` for preview mode, `renderExportSvg()` for single-panel export |
+| `ui.ts` | HTML template, DOM bindings, event handlers, param import/export |
 
 ### How the Algorithm Works
 
@@ -49,5 +44,5 @@ The file is organized into distinct sections:
 
 ### Two Rendering Modes
 
-- **Preview**: All panels rendered with blue circle borders and red panel rectangles
+- **Preview**: All panels rendered with blue border and red panel rectangles for debugging
 - **Export**: Single selected panel rendered as a square SVG for download
