@@ -26,12 +26,23 @@ The codebase is organized into focused modules under `src/`:
 | File | Purpose |
 |------|---------|
 | `main.ts` | Entry point; calls `initUI()` |
-| `types.ts` | `Params` type definition and `DEFAULTS` constant |
-| `params.ts` | `coerceParams()` for validating/normalizing user input |
+| `schema.ts` | Schema-based `Params` type definition using `param-lib` |
 | `random.ts` | Seeded PRNG (`xmur3` + `mulberry32`) and `getRandomPoints()` |
 | `geometry.ts` | `makeTranslatedTruncatedCurve()` and `circleCenters()` |
 | `render.ts` | `renderSvg()` for preview mode, `renderExportSvg()` for single-panel export |
-| `ui.ts` | HTML template, DOM bindings, event handlers, param import/export |
+| `ui.ts` | Initializes UI via `createParamUI()` from param-lib |
+
+#### param-lib (`src/param-lib/`)
+
+A schema-driven parameter library that generates types, UI, and coercion from a declarative schema:
+
+| File | Purpose |
+|------|---------|
+| `types.ts` | Schema types (`FieldDef`, `Schema`) and `InferParams<S>` mapped type |
+| `utils.ts` | `clampInt()`, `clampFloat()`, `generateSeed()`, `resolveRef()` |
+| `coerce.ts` | `getDefaults(schema)`, `createCoercer(schema)` |
+| `ui.ts` | `createParamUI(schema, config)` - generates complete UI from schema |
+| `index.ts` | Public API re-exports |
 
 ### How the Algorithm Works
 

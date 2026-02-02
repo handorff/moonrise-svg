@@ -1,5 +1,5 @@
 import paper from "paper";
-import type { Params } from "./types";
+import type { Params } from "./schema";
 import { getRandomPoints } from "./random";
 import { makeTranslatedTruncatedCurve, circleCenters } from "./geometry";
 
