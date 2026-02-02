@@ -1,7 +1,7 @@
 import paper from "paper";
 import type { Params } from "./schema";
-import { getRandomPoints } from "./random";
-import { makeTranslatedTruncatedCurve, circleCenters } from "./geometry";
+import { getRandomPoints } from "../../random";
+import { makeTranslatedTruncatedCurve, circleCenters } from "../../geometry";
 
 export function renderSvg(params: Params): string {
   // "World" dimensions (always used to generate the artwork)

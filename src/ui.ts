@@ -1,28 +1,25 @@
-import { createParamUI } from "./param-lib";
-import { schema } from "./schema";
-import { renderSvg } from "./render";
+import { createParamUI, type ParamUI } from "./param-lib";
+import type { Generator } from "./core/types";
 
-export function initUI() {
-  const app = document.querySelector<HTMLDivElement>("#app")!;
+export function mountGeneratorUI(
+  container: HTMLElement,
+  generator: Generator
+): ParamUI {
+  container.innerHTML = "";
 
-  const ui = createParamUI(schema, {
-    title: "Moonrise SVG",
-    container: app,
+  const ui = createParamUI(generator.schema, {
+    title: generator.ui?.title ?? generator.name,
+    container,
     onRender: (params) => {
-      const svg = renderSvg(params);
-      const preview = app.querySelector<HTMLDivElement>("#preview");
+      const svg = generator.render(params as Record<string, unknown>);
+      const preview = container.querySelector<HTMLDivElement>("#preview");
       if (preview) {
         preview.innerHTML = svg;
       }
     },
-    groups: {
-      export: {
-        label: "Export",
-        description: "In export mode, the SVG will contain only the selected panel.",
-      },
-    },
+    groups: generator.ui?.groups,
   });
 
-  // Expose for debugging if needed
-  (window as unknown as Record<string, unknown>).moonriseUI = ui;
+  (window as unknown as Record<string, unknown>).activeGeneratorUI = ui;
+  return ui;
 }

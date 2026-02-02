@@ -1,4 +1,4 @@
-import { defineSchema, type InferParams } from "./param-lib";
+import { defineSchema, type InferParams } from "../../param-lib";
 
 export const schema = defineSchema({
   seed: { type: "string", default: "demo", label: "Seed", randomize: true },
